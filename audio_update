@@ -14,6 +14,12 @@ MAX_ROUNDS = 100
 # ================= MUSIC =================
 pygame.mixer.init()
 MUSIC_PATH = os.path.join("assets", "music", "arcade_theme.mp3")
+pygame.mixer.music.load(MUSIC_PATH)
+pygame.mixer.music.set_volume(0.4)
+pygame.mixer.music.play(-1)
+
+music_muted = False
+current_volume = 0.4
 
 # ================= GAME STATE =================
 user_score = 0
@@ -92,7 +98,7 @@ def update_leaderboard():
 
     leaderboard_label.config(text=text)
 
-# ================= HOME → GAME =================
+# ================= NAVIGATION =================
 def start_game(mode):
     global game_mode, player_name
 
@@ -111,18 +117,30 @@ def start_game(mode):
     reset_game()
     update_leaderboard()
 
-# ================= REPLAY =================
-def replay_game():
-    global game_mode, player_name
-    game_mode = None
-    player_name = ""
+def open_settings():
+    home_frame.pack_forget()
+    settings_frame.pack(expand=True)
 
-    reset_game()
-    game_frame.pack_forget()
-
-    name_entry.delete(0, tk.END)
-    error_label.config(text="")
+def close_settings():
+    settings_frame.pack_forget()
     home_frame.pack(expand=True)
+
+# ================= MUSIC CONTROLS =================
+def toggle_mute():
+    global music_muted
+    music_muted = not music_muted
+    if music_muted:
+        pygame.mixer.music.set_volume(0)
+        mute_btn.config(text="UNMUTE")
+    else:
+        pygame.mixer.music.set_volume(current_volume)
+        mute_btn.config(text="MUTE")
+
+def set_volume(val):
+    global current_volume
+    current_volume = float(val)
+    if not music_muted:
+        pygame.mixer.music.set_volume(current_volume)
 
 # ================= CLOUDS =================
 def create_cloud(x, y):
@@ -221,6 +239,14 @@ tk.Button(
     command=lambda: start_game("100")
 ).pack(pady=4)
 
+tk.Button(
+    home_frame,
+    text="SETTINGS",
+    font=("Courier New", 12, "bold"),
+    bg="#bdb2ff",
+    command=open_settings
+).pack(pady=10)
+
 tk.Label(
     home_frame,
     text="© LuckyFox Studios 🦊",
@@ -228,6 +254,54 @@ tk.Label(
     bg="#8fd3ff",
     fg="#e63946"
 ).pack(side="bottom", pady=12)
+
+# ================= SETTINGS SCREEN =================
+settings_frame = tk.Frame(win, bg="#8fd3ff")
+
+tk.Label(
+    settings_frame,
+    text="SETTINGS",
+    font=("Courier New", 22, "bold"),
+    bg="#8fd3ff"
+).pack(pady=20)
+
+tk.Label(
+    settings_frame,
+    text="VOLUME",
+    font=("Courier New", 14, "bold"),
+    bg="#8fd3ff"
+).pack(pady=10)
+
+volume_slider = tk.Scale(
+    settings_frame,
+    from_=0,
+    to=1,
+    resolution=0.01,
+    orient="horizontal",
+    length=250,
+    bg="#8fd3ff",
+    command=set_volume
+)
+volume_slider.set(current_volume)
+volume_slider.pack()
+
+mute_btn = tk.Button(
+    settings_frame,
+    text="MUTE",
+    font=("Courier New", 14, "bold"),
+    bg="#ffd166",
+    width=10,
+    command=toggle_mute
+)
+mute_btn.pack(pady=14)
+
+tk.Button(
+    settings_frame,
+    text="BACK",
+    font=("Courier New", 12, "bold"),
+    bg="#caffbf",
+    command=close_settings
+).pack(pady=10)
 
 # ================= GAME SCREEN =================
 game_frame = tk.Frame(win, bg="#8fd3ff")
@@ -301,7 +375,7 @@ tk.Button(
     text="REPLAY / START OVER",
     font=("Courier New", 12, "bold"),
     bg="#bdb2ff",
-    command=replay_game
+    command=reset_game
 ).pack(pady=4)
 
 leaderboard_label = tk.Label(
@@ -312,10 +386,5 @@ leaderboard_label = tk.Label(
     justify="left"
 )
 leaderboard_label.pack(pady=10)
-
-# ================= START MUSIC & APP =================
-pygame.mixer.music.load(MUSIC_PATH)
-pygame.mixer.music.set_volume(0.4)
-pygame.mixer.music.play(-1)
 
 win.mainloop()
