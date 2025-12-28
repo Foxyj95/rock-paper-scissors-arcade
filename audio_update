@@ -117,6 +117,10 @@ def start_game(mode):
     reset_game()
     update_leaderboard()
 
+def return_home():
+    game_frame.pack_forget()
+    home_frame.pack(expand=True)
+
 def open_settings():
     home_frame.pack_forget()
     settings_frame.pack(expand=True)
@@ -375,7 +379,7 @@ tk.Button(
     text="REPLAY / START OVER",
     font=("Courier New", 12, "bold"),
     bg="#bdb2ff",
-    command=reset_game
+    command=lambda: (reset_game(), return_home())
 ).pack(pady=4)
 
 leaderboard_label = tk.Label(
