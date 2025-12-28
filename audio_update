@@ -1,0 +1,321 @@
+import tkinter as tk
+import random
+import pygame
+import os
+
+# ================= CONSTANTS =================
+WINDOW_WIDTH = 560
+WINDOW_HEIGHT = 700
+CLOUD_SPEED = 1
+CLOUD_DELAY = 120
+CHOICES = ["rock", "paper", "scissors"]
+MAX_ROUNDS = 100
+
+# ================= MUSIC =================
+pygame.mixer.init()
+MUSIC_PATH = os.path.join("assets", "music", "arcade_theme.mp3")
+
+# ================= GAME STATE =================
+user_score = 0
+cpu_score = 0
+rounds_played = 0
+game_mode = None
+player_name = ""
+
+leaderboard_unlimited = []
+leaderboard_100 = []
+clouds = []
+
+# ================= GAME LOGIC =================
+def play(user_choice):
+    global user_score, cpu_score, rounds_played
+
+    cpu_choice = random.choice(CHOICES)
+    rounds_played += 1
+
+    you_choice.config(text=f"YOU: {user_choice.upper()}")
+    cpu_choice_lbl.config(text=f"CPU: {cpu_choice.upper()}")
+
+    if user_choice == cpu_choice:
+        result.config(text="TIE!")
+    elif (
+        (user_choice == "rock" and cpu_choice == "scissors") or
+        (user_choice == "paper" and cpu_choice == "rock") or
+        (user_choice == "scissors" and cpu_choice == "paper")
+    ):
+        user_score += 1
+        result.config(text="YOU WIN!")
+    else:
+        cpu_score += 1
+        result.config(text="CPU WINS!")
+
+    score.config(text=f"SCORE  YOU {user_score}  |  CPU {cpu_score}")
+    rounds_label.config(text=f"ROUNDS: {rounds_played}")
+
+    if game_mode == "100" and rounds_played >= MAX_ROUNDS:
+        end_game(auto=True)
+
+# ================= END GAME =================
+def end_game(auto=False):
+    entry = (player_name, user_score)
+    board = leaderboard_unlimited if game_mode == "unlimited" else leaderboard_100
+    board.append(entry)
+    board.sort(key=lambda x: x[1], reverse=True)
+    del board[10:]
+
+    update_leaderboard()
+    result.config(text="GAME OVER!" if auto else "SCORE SAVED!")
+    reset_game()
+
+# ================= RESET =================
+def reset_game():
+    global user_score, cpu_score, rounds_played
+    user_score = 0
+    cpu_score = 0
+    rounds_played = 0
+
+    you_choice.config(text="YOU:")
+    cpu_choice_lbl.config(text="CPU:")
+    score.config(text="SCORE  YOU 0  |  CPU 0")
+    rounds_label.config(text="ROUNDS: 0")
+    result.config(text="MAKE YOUR CHOICE!")
+
+# ================= LEADERBOARD =================
+def update_leaderboard():
+    board = leaderboard_unlimited if game_mode == "unlimited" else leaderboard_100
+    title = "UNLIMITED MODE" if game_mode == "unlimited" else "100 ROUND CHALLENGE"
+
+    text = f"{title}\n"
+    for i, (name, score_val) in enumerate(board, start=1):
+        crown = " 👑" if i == 1 else ""
+        text += f"{i}. {name} — {score_val}{crown}\n"
+
+    leaderboard_label.config(text=text)
+
+# ================= HOME → GAME =================
+def start_game(mode):
+    global game_mode, player_name
+
+    name = name_entry.get().strip()
+    if not name:
+        error_label.config(text="PLEASE ENTER A NAME")
+        return
+
+    error_label.config(text="")
+    player_name = name
+    game_mode = mode
+
+    home_frame.pack_forget()
+    game_frame.pack(expand=True)
+
+    reset_game()
+    update_leaderboard()
+
+# ================= REPLAY =================
+def replay_game():
+    global game_mode, player_name
+    game_mode = None
+    player_name = ""
+
+    reset_game()
+    game_frame.pack_forget()
+
+    name_entry.delete(0, tk.END)
+    error_label.config(text="")
+    home_frame.pack(expand=True)
+
+# ================= CLOUDS =================
+def create_cloud(x, y):
+    blocks = []
+    for bx, by in [
+        (0,20),(20,20),(40,20),(60,20),
+        (20,0),(40,0),(80,20),(100,20)
+    ]:
+        block = canvas.create_rectangle(
+            x + bx, y + by,
+            x + bx + 20, y + by + 20,
+            fill="white",
+            outline=""
+        )
+        blocks.append(block)
+    return blocks
+
+def move_clouds():
+    for cloud in clouds:
+        for block in cloud:
+            canvas.move(block, CLOUD_SPEED, 0)
+
+        x1, _, _, _ = canvas.bbox(cloud[0])
+        if x1 > WINDOW_WIDTH:
+            for block in cloud:
+                canvas.move(block, -WINDOW_WIDTH - 120, 0)
+
+    win.after(CLOUD_DELAY, move_clouds)
+
+# ================= WINDOW =================
+win = tk.Tk()
+win.title("Rock Paper Scissors")
+win.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+win.configure(bg="#8fd3ff")
+
+# ================= CANVAS =================
+canvas = tk.Canvas(win, width=WINDOW_WIDTH, height=180, bg="#8fd3ff", highlightthickness=0)
+canvas.pack()
+
+clouds.append(create_cloud(40, 90))
+clouds.append(create_cloud(300, 60))
+move_clouds()
+
+# ================= HOME SCREEN =================
+home_frame = tk.Frame(win, bg="#8fd3ff")
+home_frame.pack(expand=True)
+
+tk.Label(
+    home_frame,
+    text="ROCK\nPAPER\nSCISSORS!",
+    font=("Courier New", 30, "bold"),
+    bg="#8fd3ff"
+).pack(pady=20)
+
+tk.Label(
+    home_frame,
+    text="ENTER YOUR NAME",
+    font=("Courier New", 14, "bold"),
+    bg="#8fd3ff"
+).pack()
+
+name_entry = tk.Entry(home_frame, font=("Courier New", 14), width=20)
+name_entry.pack(pady=6)
+
+error_label = tk.Label(
+    home_frame,
+    text="",
+    font=("Courier New", 12, "bold"),
+    bg="#8fd3ff",
+    fg="#e63946"
+)
+error_label.pack()
+
+tk.Label(
+    home_frame,
+    text="CHOOSE YOUR MODE",
+    font=("Courier New", 14, "bold"),
+    bg="#8fd3ff"
+).pack(pady=14)
+
+tk.Button(
+    home_frame,
+    text="UNLIMITED MODE",
+    font=("Courier New", 14, "bold"),
+    width=22,
+    bg="#caffbf",
+    command=lambda: start_game("unlimited")
+).pack(pady=4)
+
+tk.Button(
+    home_frame,
+    text="100 ROUND CHALLENGE",
+    font=("Courier New", 14, "bold"),
+    width=22,
+    bg="#ffd6a5",
+    command=lambda: start_game("100")
+).pack(pady=4)
+
+tk.Label(
+    home_frame,
+    text="© LuckyFox Studios 🦊",
+    font=("Courier New", 11, "bold"),
+    bg="#8fd3ff",
+    fg="#e63946"
+).pack(side="bottom", pady=12)
+
+# ================= GAME SCREEN =================
+game_frame = tk.Frame(win, bg="#8fd3ff")
+
+tk.Label(
+    game_frame,
+    text="MAKE YOUR THROW",
+    font=("Courier New", 18, "bold"),
+    bg="#8fd3ff"
+).pack(pady=10)
+
+panel = tk.Frame(game_frame, bg="#8fd3ff")
+panel.pack(pady=10)
+
+def game_button(label, choice, color):
+    return tk.Button(
+        panel,
+        text=label,
+        font=("Courier New", 14, "bold"),
+        width=12,
+        height=2,
+        bg=color,
+        command=lambda: play(choice)
+    )
+
+game_button("ROCK", "rock", "#ffd6a5").grid(row=0, column=0, padx=6)
+game_button("PAPER", "paper", "#fdffb6").grid(row=0, column=1, padx=6)
+game_button("SCISSORS", "scissors", "#caffbf").grid(row=0, column=2, padx=6)
+
+you_choice = tk.Label(game_frame, text="YOU:", font=("Courier New", 14, "bold"), bg="#8fd3ff")
+you_choice.pack()
+
+cpu_choice_lbl = tk.Label(game_frame, text="CPU:", font=("Courier New", 14, "bold"), bg="#8fd3ff")
+cpu_choice_lbl.pack()
+
+result = tk.Label(
+    game_frame,
+    text="MAKE YOUR CHOICE!",
+    font=("Courier New", 18, "bold"),
+    bg="#8fd3ff",
+    fg="#e63946"
+)
+result.pack(pady=6)
+
+score = tk.Label(
+    game_frame,
+    text="SCORE  YOU 0  |  CPU 0",
+    font=("Courier New", 14, "bold"),
+    bg="#8fd3ff"
+)
+score.pack()
+
+rounds_label = tk.Label(
+    game_frame,
+    text="ROUNDS: 0",
+    font=("Courier New", 12, "bold"),
+    bg="#8fd3ff"
+)
+rounds_label.pack(pady=2)
+
+tk.Button(
+    game_frame,
+    text="END GAME & SAVE SCORE",
+    font=("Courier New", 12, "bold"),
+    bg="#ffd166",
+    command=end_game
+).pack(pady=6)
+
+tk.Button(
+    game_frame,
+    text="REPLAY / START OVER",
+    font=("Courier New", 12, "bold"),
+    bg="#bdb2ff",
+    command=replay_game
+).pack(pady=4)
+
+leaderboard_label = tk.Label(
+    game_frame,
+    text="",
+    font=("Courier New", 14, "bold"),
+    bg="#8fd3ff",
+    justify="left"
+)
+leaderboard_label.pack(pady=10)
+
+# ================= START MUSIC & APP =================
+pygame.mixer.music.load(MUSIC_PATH)
+pygame.mixer.music.set_volume(0.4)
+pygame.mixer.music.play(-1)
+
+win.mainloop()
